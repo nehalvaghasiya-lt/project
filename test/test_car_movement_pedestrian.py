@@ -1,70 +1,85 @@
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import patch
+from contextlib import contextmanager
+from io import StringIO
 from code.car_movement_pedestrian import Car, GPS
+import sys
 
 
-class CarTests(unittest.TestCase):
+@contextmanager
+def capture_stdout():
+    """Context manager to capture stdout"""
+    old_stdout = sys.stdout
+    sys.stdout = StringIO()
+    try:
+        yield sys.stdout
+    finally:
+        sys.stdout = old_stdout
+
+
+class TestCar(unittest.TestCase):
+
     def setUp(self):
         self.gps = GPS()
         self.car = Car(self.gps)
 
-    def test_move_towards_destination_when_not_in_pedestrian_zone(self):
-        # Set up GPS to return False for is_pedestrian_zone
-        self.gps.is_pedestrian_zone = MagicMock(return_value=False)
+    @patch.object(GPS, 'is_pedestrian_zone', return_value=False)
+    def test_move_towards_destination_when_not_in_pedestrian_zone(self, _):
+        """Car should move towards destination if it's not a pedestrian zone."""
+        # Arrange
+        destination = "Mall"
 
-        # Capture the output of the move method
-        with captured_output() as (out, err):
-            self.car.move("Mall")
+        # Act
+        with capture_stdout() as output:
+            self.car.move(destination)
 
-        # Assert that the car moves towards the destination
-        output = out.getvalue().strip()
-        self.assertEqual("Moving towards destination.", output)
+        # Assert
+        expected_output = "Moving towards destination."
+        self.assertEqual(expected_output, output.getvalue().strip())
 
-    def test_cannot_enter_pedestrian_zones(self):
-        # Set up GPS to return True for is_pedestrian_zone
-        self.gps.is_pedestrian_zone = MagicMock(return_value=True)
+    @patch.object(GPS, 'is_pedestrian_zone', return_value=True)
+    def test_cannot_enter_pedestrian_zones(self, _):
+        """Car shouldn't be able to enter pedestrian zones."""
+        # Arrange
+        destination = "Park"
 
-        # Capture the output of the move method
-        with captured_output() as (out, err):
-            self.car.move("Park")
+        # Act
+        with capture_stdout() as output:
+            self.car.move(destination)
 
-        # Assert that the car cannot enter pedestrian-only zones
-        output = out.getvalue().strip()
-        self.assertEqual("Cannot enter pedestrian-only zones.", output)
+        # Assert
+        expected_output = "Cannot enter pedestrian-only zones."
+        self.assertEqual(expected_output, output.getvalue().strip())
 
 
-class GPSTests(unittest.TestCase):
+class TestGPS(unittest.TestCase):
+
     def setUp(self):
         self.gps = GPS()
 
     def test_is_pedestrian_zone_returns_true_for_pedestrian_zone(self):
-        # Call the is_pedestrian_zone method with a pedestrian zone
-        is_pedestrian = self.gps.is_pedestrian_zone("Park")
+        """GPS should return True if the location is a pedestrian zone."""
+        # Arrange
+        location = "Park"
 
-        # Assert that it returns True for pedestrian zone
+        # Act
+        is_pedestrian = self.gps.is_pedestrian_zone(location)
+
+        # Assert
         self.assertTrue(is_pedestrian)
 
     def test_is_pedestrian_zone_returns_false_for_non_pedestrian_zone(self):
-        # Call the is_pedestrian_zone method with a non-pedestrian zone
-        is_pedestrian = self.gps.is_pedestrian_zone("Mall")
+        """GPS should return False if the location is not a pedestrian zone."""
+        # Arrange
+        location = "Mall"
 
-        # Assert that it returns False for non-pedestrian zone
+        # Act
+        is_pedestrian = self.gps.is_pedestrian_zone(location)
+
+        # Assert
         self.assertFalse(is_pedestrian)
-
-
-# Helper class for capturing stdout
-from io import StringIO
-import sys
-
-class captured_output:
-    def __enter__(self):
-        self._original_stdout = sys.stdout
-        sys.stdout = self._captured_stdout = StringIO()
-        return self._captured_stdout
-
-    def __exit__(self, *args):
-        sys.stdout = self._original_stdout
 
 
 if __name__ == '__main__':
     unittest.main()
+

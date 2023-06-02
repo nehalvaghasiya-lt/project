@@ -1,63 +1,65 @@
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import patch
+from contextlib import contextmanager
+from io import StringIO
 from code.maintain_distance import Car, DistanceSensor
+import sys
 
 
-class CarTests(unittest.TestCase):
+@contextmanager
+def capture_stdout():
+    """Context manager to capture stdout"""
+    old_stdout = sys.stdout
+    sys.stdout = StringIO()
+    try:
+        yield sys.stdout
+    finally:
+        sys.stdout = old_stdout
+
+
+class TestCar(unittest.TestCase):
+
     def setUp(self):
         self.distance_sensor = DistanceSensor()
         self.car = Car(self.distance_sensor)
 
-    def test_maintain_safe_distance(self):
-        # Set up distance sensor to return a distance less than 2
-        self.distance_sensor.get_distance = MagicMock(return_value=1.5)
-
-        # Capture the output of the move method
-        with captured_output() as (out, err):
+    @patch.object(DistanceSensor, 'get_distance', return_value=1.5)
+    def test_maintain_safe_distance(self, _):
+        """Car should maintain a safe distance from surrounding objects if distance is less than 2."""
+        # Act
+        with capture_stdout() as output:
             self.car.move()
 
-        # Assert that the car maintains a safe distance from surrounding objects
-        output = out.getvalue().strip()
-        self.assertEqual("Maintaining safe distance from surrounding objects.", output)
+        # Assert
+        expected_output = "Maintaining safe distance from surrounding objects."
+        self.assertEqual(expected_output, output.getvalue().strip())
 
-    def test_move_forward(self):
-        # Set up distance sensor to return a distance greater than or equal to 2
-        self.distance_sensor.get_distance = MagicMock(return_value=2.5)
-
-        # Capture the output of the move method
-        with captured_output() as (out, err):
+    @patch.object(DistanceSensor, 'get_distance', return_value=2.5)
+    def test_move_forward(self, _):
+        """Car should move forward if distance is greater than or equal to 2."""
+        # Act
+        with capture_stdout() as output:
             self.car.move()
 
-        # Assert that the car moves forward
-        output = out.getvalue().strip()
-        self.assertEqual("Moving forward.", output)
+        # Assert
+        expected_output = "Moving forward."
+        self.assertEqual(expected_output, output.getvalue().strip())
 
 
-class DistanceSensorTests(unittest.TestCase):
+class TestDistanceSensor(unittest.TestCase):
+
     def setUp(self):
         self.distance_sensor = DistanceSensor()
 
     def test_get_distance_returns_float(self):
-        # Call the get_distance method
+        """DistanceSensor's get_distance method should return a float value."""
+        # Act
         result = self.distance_sensor.get_distance()
 
-        # Assert that the result is a float
+        # Assert
         self.assertIsInstance(result, float)
-
-
-# Helper class for capturing stdout
-from io import StringIO
-import sys
-
-class captured_output:
-    def __enter__(self):
-        self._original_stdout = sys.stdout
-        sys.stdout = self._captured_stdout = StringIO()
-        return self._captured_stdout
-
-    def __exit__(self, *args):
-        sys.stdout = self._original_stdout
 
 
 if __name__ == '__main__':
     unittest.main()
+

@@ -1,63 +1,65 @@
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import patch
+from contextlib import contextmanager
+from io import StringIO
 from code.traffic_light_car import Car, TrafficLight
+import sys
 
 
-class CarTests(unittest.TestCase):
+@contextmanager
+def capture_stdout():
+    """Context manager to capture stdout"""
+    old_stdout = sys.stdout
+    sys.stdout = StringIO()
+    try:
+        yield sys.stdout
+    finally:
+        sys.stdout = old_stdout
+
+
+class TestCar(unittest.TestCase):
+
     def setUp(self):
         self.traffic_light = TrafficLight()
         self.car = Car(self.traffic_light)
 
-    def test_wait_at_red_light_when_traffic_light_is_red(self):
-        # Set up traffic light to return True for is_red
-        self.traffic_light.is_red = MagicMock(return_value=True)
-
-        # Capture the output of the move method
-        with captured_output() as (out, err):
+    @patch.object(TrafficLight, 'is_red', return_value=True)
+    def test_wait_at_red_light_when_traffic_light_is_red(self, _):
+        """Car should wait at red traffic light."""
+        # Act
+        with capture_stdout() as output:
             self.car.move()
 
-        # Assert that the car waits at the red light
-        output = out.getvalue().strip()
-        self.assertEqual("Waiting at the red light.", output)
+        # Assert
+        expected_output = "Waiting at the red light."
+        self.assertEqual(expected_output, output.getvalue().strip())
 
-    def test_cross_intersection_when_traffic_light_is_green(self):
-        # Set up traffic light to return False for is_red
-        self.traffic_light.is_red = MagicMock(return_value=False)
-
-        # Capture the output of the move method
-        with captured_output() as (out, err):
+    @patch.object(TrafficLight, 'is_red', return_value=False)
+    def test_cross_intersection_when_traffic_light_is_green(self, _):
+        """Car should cross the intersection when traffic light is green."""
+        # Act
+        with capture_stdout() as output:
             self.car.move()
 
-        # Assert that the car crosses the intersection
-        output = out.getvalue().strip()
-        self.assertEqual("Crossing the intersection.", output)
+        # Assert
+        expected_output = "Crossing the intersection."
+        self.assertEqual(expected_output, output.getvalue().strip())
 
 
-class TrafficLightTests(unittest.TestCase):
+class TestTrafficLight(unittest.TestCase):
+
     def setUp(self):
         self.traffic_light = TrafficLight()
 
     def test_is_red_returns_boolean(self):
-        # Call the is_red method
+        """TrafficLight's is_red method should return a boolean value."""
+        # Act
         result = self.traffic_light.is_red()
 
-        # Assert that the result is a boolean
+        # Assert
         self.assertIsInstance(result, bool)
-
-
-# Helper class for capturing stdout
-from io import StringIO
-import sys
-
-class captured_output:
-    def __enter__(self):
-        self._original_stdout = sys.stdout
-        sys.stdout = self._captured_stdout = StringIO()
-        return self._captured_stdout
-
-    def __exit__(self, *args):
-        sys.stdout = self._original_stdout
 
 
 if __name__ == '__main__':
     unittest.main()
+

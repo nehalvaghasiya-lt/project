@@ -1,63 +1,77 @@
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import patch
+from contextlib import contextmanager
+from io import StringIO
 from code.one_way_street_car import Car, StreetMap
+import sys
 
 
-class CarTests(unittest.TestCase):
+@contextmanager
+def capture_stdout():
+    """Context manager to capture stdout"""
+    old_stdout = sys.stdout
+    sys.stdout = StringIO()
+    try:
+        yield sys.stdout
+    finally:
+        sys.stdout = old_stdout
+
+
+class TestCar(unittest.TestCase):
+
     def setUp(self):
         self.street_map = StreetMap()
         self.car = Car(self.street_map)
 
-    def test_move_forward_on_non_one_way_street(self):
-        # Set up street map to return False for is_one_way
-        self.street_map.is_one_way = MagicMock(return_value=False)
+    @patch.object(StreetMap, 'is_one_way', return_value=False)
+    def test_move_forward_on_non_one_way_street(self, _):
+        """Car should move forward on a non one-way street."""
+        # Arrange
+        street_name = "Main Street"
+        direction = "West"
 
-        # Capture the output of the move method
-        with captured_output() as (out, err):
-            self.car.move("Main Street", "West")
+        # Act
+        with capture_stdout() as output:
+            self.car.move(street_name, direction)
 
-        # Assert that the car moves forward on the street
-        output = out.getvalue().strip()
-        self.assertEqual("Moving forward on the street.", output)
+        # Assert
+        expected_output = "Moving forward on the street."
+        self.assertEqual(expected_output, output.getvalue().strip())
 
-    def test_cannot_enter_wrong_direction_on_one_way_street(self):
-        # Set up street map to return True for is_one_way
-        self.street_map.is_one_way = MagicMock(return_value=True)
+    @patch.object(StreetMap, 'is_one_way', return_value=True)
+    def test_cannot_enter_wrong_direction_on_one_way_street(self, _):
+        """Car should not be able to move in the wrong direction on a one-way street."""
+        # Arrange
+        street_name = "Main Street"
+        direction = "West"
 
-        # Capture the output of the move method
-        with captured_output() as (out, err):
-            self.car.move("Main Street", "West")
+        # Act
+        with capture_stdout() as output:
+            self.car.move(street_name, direction)
 
-        # Assert that the car cannot enter the one-way street in the wrong direction
-        output = out.getvalue().strip()
-        self.assertEqual("Cannot enter a one-way street in the wrong direction.", output)
+        # Assert
+        expected_output = "Cannot enter a one-way street in the wrong direction."
+        self.assertEqual(expected_output, output.getvalue().strip())
 
 
-class StreetMapTests(unittest.TestCase):
+class TestStreetMap(unittest.TestCase):
+
     def setUp(self):
         self.street_map = StreetMap()
 
     def test_is_one_way_returns_boolean(self):
-        # Call the is_one_way method
-        result = self.street_map.is_one_way("Main Street", "West")
+        """StreetMap's is_one_way method should return a boolean value."""
+        # Arrange
+        street_name = "Main Street"
+        direction = "West"
 
-        # Assert that the result is a boolean
+        # Act
+        result = self.street_map.is_one_way(street_name, direction)
+
+        # Assert
         self.assertIsInstance(result, bool)
-
-
-# Helper class for capturing stdout
-from io import StringIO
-import sys
-
-class captured_output:
-    def __enter__(self):
-        self._original_stdout = sys.stdout
-        sys.stdout = self._captured_stdout = StringIO()
-        return self._captured_stdout
-
-    def __exit__(self, *args):
-        sys.stdout = self._original_stdout
 
 
 if __name__ == '__main__':
     unittest.main()
+
